@@ -1,0 +1,90 @@
+#!/bin/bash
+# DRADIS Remote Deployment Script Template
+# Deploy DRADIS to a remote server via SSH
+#
+# Usage:
+# 1. Copy this template to scripts/deploy_remote.sh
+# 2. Set your environment variables or edit the defaults below
+# 3. Make executable: chmod +x scripts/deploy_remote.sh
+# 4. Run: ./scripts/deploy_remote.sh
+
+set -e
+
+# Configuration - edit these for your setup
+REMOTE_HOST="${REMOTE_HOST:-YOUR_REMOTE_HOST}"  # Your SSH host alias or user@hostname
+REMOTE_JUMP="${REMOTE_JUMP:-}"  # Optional jump host (leave empty if direct connection)
+REMOTE_DIR="${REMOTE_DIR:-~/Documents/DRADIS}"  # Target directory on remote server
+LOCAL_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"  # DRADIS root directory
+
+echo "🚀 DRADIS Remote Deployment"
+echo "=========================="
+echo "Local:  $LOCAL_DIR"
+echo "Remote: $REMOTE_HOST:$REMOTE_DIR"
+echo ""
+
+# Check if we can reach the remote server
+echo "📡 Testing SSH connection..."
+if [ -n "$REMOTE_JUMP" ]; then
+    SSH_CMD="ssh -J $REMOTE_JUMP"
+else
+    SSH_CMD="ssh"
+fi
+
+if ! $SSH_CMD "$REMOTE_HOST" "echo 'SSH connection successful'"; then
+    echo "❌ Cannot connect to $REMOTE_HOST"
+    echo "Please check your SSH configuration or set REMOTE_HOST environment variable"
+    exit 1
+fi
+
+echo "✅ SSH connection verified"
+echo ""
+
+# Create remote directory if it doesn't exist
+echo "📁 Creating remote directory..."
+$SSH_CMD "$REMOTE_HOST" "mkdir -p $REMOTE_DIR"
+
+# Sync files to remote server (excluding venv, database, and reports)
+echo "📦 Syncing DRADIS files to remote server..."
+if [ -n "$REMOTE_JUMP" ]; then
+    RSYNC_SSH="ssh -J $REMOTE_JUMP"
+else
+    RSYNC_SSH="ssh"
+fi
+
+rsync -av --delete \
+    -e "$RSYNC_SSH" \
+    --exclude 'venv/' \
+    --exclude '*.db' \
+    --exclude '*_report_*.html' \
+    --exclude '.git/' \
+    --exclude '__pycache__/' \
+    --exclude '*.pyc' \
+    --exclude '.env' \
+    --exclude 'logs/' \
+    --exclude 'reports/' \
+    "$LOCAL_DIR/" "$REMOTE_HOST:$REMOTE_DIR/"
+
+echo "✅ Files synced successfully"
+echo ""
+
+# Set up Python environment on remote server
+echo "🐍 Setting up Python environment on remote server..."
+$SSH_CMD "$REMOTE_HOST" "cd $REMOTE_DIR && python -m venv venv"
+$SSH_CMD "$REMOTE_HOST" "cd $REMOTE_DIR && source venv/bin/activate && pip install -r requirements.txt"
+
+echo "✅ Python environment ready"
+echo ""
+
+# Copy configuration template if .env doesn't exist
+echo "⚙️  Setting up configuration..."
+$SSH_CMD "$REMOTE_HOST" "cd $REMOTE_DIR && [ ! -f .env ] && cp .env.template .env || true"
+
+echo "📝 Next steps:"
+echo "1. SSH to your remote server: $SSH_CMD $REMOTE_HOST"
+echo "2. Navigate to DRADIS: cd $REMOTE_DIR"
+echo "3. Edit configuration: nano .env"
+echo "4. Set up your profile: python dradis.py auto-profile"
+echo "5. Test email: python src/save_daily_report.py"
+echo "6. Install systemd service: sudo scripts/install_service.sh"
+echo ""
+echo "🎉 Deployment complete!"

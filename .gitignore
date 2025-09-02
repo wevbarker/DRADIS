@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Configuration
+.env
+.env.local
+*.local
+
+# Database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Reports
+reports/
+*_report_*.html
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.cache
+
+# Distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Deployment-specific scripts
+scripts/deploy_remote.sh
+scripts/setup_scheduling.sh
+scripts/run_daily_harvest.sh
+scripts/check_sync_status.sh
+scripts/dev_sync.py
+scripts/fetch_collaborators.py
+scripts/prime_gpg_cache.sh
+
+# Development files
+.claude/
+TODO.md
+NOTES.md

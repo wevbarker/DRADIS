@@ -1,0 +1,3 @@
+# INSTRUCTIONS
+
+I am a theoretical physicist, with an ORCID and INSPIRE ID, as well as a Google Scholar profile. Every morning, I check the new announcements on the arXiv, specifically for the hep-th, gr-qc and astro-ph.CO categories. I look at titles and abstracts that may be relevant to my work. Sometimes, I email the authors to encourage them to cite my work, or to ask them questions about their papers. I would like to automate this process. I would like to use an AI model such as Gemini to read not only the abstracts of the new arXiv papers, but also the papers themselves. I would like the tool to compare the content of the papers with my own work and flag papers that are relevant to me. I would like you to suggest an approach to achieve this.

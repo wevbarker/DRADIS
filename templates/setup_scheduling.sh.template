@@ -1,0 +1,174 @@
+#!/bin/bash
+# DRADIS Scheduling Setup Template
+#
+# Usage:
+# 1. Copy this template to scripts/setup_scheduling.sh
+# 2. Edit the configuration variables below
+# 3. Make executable: chmod +x scripts/setup_scheduling.sh
+# 4. Run: ./scripts/setup_scheduling.sh
+
+# Configuration
+DRADIS_DIR="${DRADIS_DIR:-$HOME/Documents/DRADIS}"
+USER_EMAIL="${USER_EMAIL:-your-email@example.com}"
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo "🗓️  DRADIS Scheduler Setup"
+echo "========================"
+echo ""
+
+# Check if DRADIS directory exists
+if [ ! -d "$DRADIS_DIR" ]; then
+    echo -e "${RED}❌ DRADIS directory not found: $DRADIS_DIR${NC}"
+    echo "Please set DRADIS_DIR environment variable or edit this script"
+    exit 1
+fi
+
+# Check if running on Arch Linux for systemd timers
+if [ -f /etc/arch-release ]; then
+    echo -e "${GREEN}✓ Arch Linux detected - systemd timers available${NC}"
+    USE_SYSTEMD=true
+else
+    echo -e "${YELLOW}⚠ Non-Arch system - will use cron instead of systemd timers${NC}"
+    USE_SYSTEMD=false
+fi
+
+# Create the run script
+RUN_SCRIPT="$DRADIS_DIR/scripts/run_daily_harvest.sh"
+echo "📝 Creating run script..."
+
+cat > "$RUN_SCRIPT" << 'EOF'
+#!/bin/bash
+# DRADIS Daily Harvest Runner
+# This script is called by cron/systemd to run the daily paper harvest
+
+# Set up environment
+DRADIS_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+cd "$DRADIS_DIR" || exit 1
+
+# Source virtual environment
+source venv/bin/activate || exit 1
+
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
+# Run the harvest with logging
+LOG_FILE="logs/scheduler.log"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "[$TIMESTAMP] Starting DRADIS daily harvest" >> "$LOG_FILE"
+
+# Run harvest command
+if python dradis.py harvest >> "$LOG_FILE" 2>&1; then
+    echo "[$TIMESTAMP] Harvest completed successfully" >> "$LOG_FILE"
+    exit 0
+else
+    EXIT_CODE=$?
+    echo "[$TIMESTAMP] Harvest failed with exit code $EXIT_CODE" >> "$LOG_FILE"
+    
+    # Optional: Send email notification on failure
+    if command -v mutt >/dev/null 2>&1; then
+        echo "DRADIS harvest failed at $TIMESTAMP. Check $DRADIS_DIR/logs/scheduler.log for details." | \
+            mutt -s "DRADIS Harvest Failed" "$USER_EMAIL" 2>/dev/null || true
+    fi
+    
+    exit $EXIT_CODE
+fi
+EOF
+
+chmod +x "$RUN_SCRIPT"
+echo -e "${GREEN}✓ Run script created${NC}"
+
+# Set up scheduling
+if [ "$USE_SYSTEMD" = true ] && command -v systemctl >/dev/null 2>&1; then
+    echo ""
+    echo "📅 Setting up systemd timer..."
+    
+    # Create systemd service
+    SERVICE_FILE="$HOME/.config/systemd/user/dradis-harvest.service"
+    TIMER_FILE="$HOME/.config/systemd/user/dradis-harvest.timer"
+    
+    mkdir -p "$HOME/.config/systemd/user"
+    
+    cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=DRADIS Daily Paper Harvest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=$RUN_SCRIPT
+WorkingDirectory=$DRADIS_DIR
+
+[Install]
+WantedBy=default.target
+EOF
+
+    cat > "$TIMER_FILE" << EOF
+[Unit]
+Description=Run DRADIS Daily Paper Harvest at 6 AM
+Requires=dradis-harvest.service
+
+[Timer]
+OnCalendar=daily
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    # Enable the timer
+    systemctl --user daemon-reload
+    systemctl --user enable dradis-harvest.timer
+    systemctl --user start dradis-harvest.timer
+    
+    echo -e "${GREEN}✓ Systemd timer configured${NC}"
+    echo ""
+    echo "📊 Timer status:"
+    systemctl --user status dradis-harvest.timer --no-pager
+    
+else
+    echo ""
+    echo "📅 Setting up cron job..."
+    
+    # Create cron entry
+    CRON_ENTRY="0 6 * * * $RUN_SCRIPT >/dev/null 2>&1"
+    
+    # Check if cron entry already exists
+    if crontab -l 2>/dev/null | grep -q "$RUN_SCRIPT"; then
+        echo -e "${YELLOW}⚠ Cron entry already exists${NC}"
+    else
+        # Add to crontab
+        (crontab -l 2>/dev/null; echo ""; echo "# DRADIS Daily Paper Harvest - Added $(date)"; echo "$CRON_ENTRY") | crontab -
+        echo -e "${GREEN}✓ Cron job added${NC}"
+    fi
+    
+    echo ""
+    echo "📊 Current crontab:"
+    crontab -l | grep -A1 -B1 DRADIS || echo "No DRADIS entries found"
+fi
+
+echo ""
+echo "✅ Scheduling setup complete!"
+echo ""
+echo "🔍 To check the schedule:"
+if [ "$USE_SYSTEMD" = true ]; then
+    echo "   systemctl --user list-timers | grep dradis"
+    echo "   systemctl --user status dradis-harvest.timer"
+else
+    echo "   crontab -l"
+fi
+echo ""
+echo "📧 Email notifications will be sent to $USER_EMAIL on failures"
+echo ""
+echo "🧪 To test the scheduler manually:"
+echo "   $RUN_SCRIPT"
+echo ""
+echo "📋 To view logs:"
+echo "   tail -f $DRADIS_DIR/logs/scheduler.log"

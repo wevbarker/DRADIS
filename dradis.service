@@ -1,0 +1,15 @@
+[Unit]
+Description=DRADIS arXiv Research Discovery System
+After=network.target
+
+[Service]
+Type=simple
+User=barker
+WorkingDirectory=/home/barker/Documents/DRADIS
+ExecStart=/usr/bin/python3 scheduler.py
+Restart=always
+RestartSec=10
+Environment=PYTHONPATH=/home/barker/Documents/DRADIS
+
+[Install]
+WantedBy=multi-user.target

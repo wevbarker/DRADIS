@@ -1,0 +1,44 @@
+#!/bin/bash
+# DRADIS Daily Harvest Runner Template
+# This script is called by cron/systemd to run the daily paper harvest
+#
+# Usage:
+# 1. Copy this template to scripts/run_daily_harvest.sh
+# 2. Edit USER_EMAIL below
+# 3. Make executable: chmod +x scripts/run_daily_harvest.sh
+
+# Configuration
+USER_EMAIL="${USER_EMAIL:-your-email@example.com}"
+
+# Set up environment
+DRADIS_DIR="$(dirname "$(dirname "$(readlink -f "$0")")")"
+cd "$DRADIS_DIR" || exit 1
+
+# Source virtual environment
+source venv/bin/activate || exit 1
+
+# Create logs directory if it doesn't exist
+mkdir -p logs
+
+# Run the harvest with logging
+LOG_FILE="logs/scheduler.log"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+
+echo "[$TIMESTAMP] Starting DRADIS daily harvest" >> "$LOG_FILE"
+
+# Run harvest command
+if python dradis.py harvest >> "$LOG_FILE" 2>&1; then
+    echo "[$TIMESTAMP] Harvest completed successfully" >> "$LOG_FILE"
+    exit 0
+else
+    EXIT_CODE=$?
+    echo "[$TIMESTAMP] Harvest failed with exit code $EXIT_CODE" >> "$LOG_FILE"
+    
+    # Optional: Send email notification on failure
+    if command -v mutt >/dev/null 2>&1 && [ "$USER_EMAIL" != "your-email@example.com" ]; then
+        echo "DRADIS harvest failed at $TIMESTAMP. Check $DRADIS_DIR/logs/scheduler.log for details." | \
+            mutt -s "DRADIS Harvest Failed" "$USER_EMAIL" 2>/dev/null || true
+    fi
+    
+    exit $EXIT_CODE
+fi
