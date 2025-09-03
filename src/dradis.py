@@ -230,13 +230,12 @@ class DRADIS:
         report = self.notification_system.generate_daily_report(target_date)
         print(f"📊 Generated report: {report['total_flagged']} relevant papers found")
         
-        # Send email report if configured
-        if report['total_flagged'] > 0:
-            email_sent = self.notification_system.send_daily_report(report, target_date)
-            if email_sent:
-                print("📧 Daily report sent via email")
-            else:
-                print("⚠️  Email not configured or failed to send")
+        # Always send email report (even if no flagged papers)
+        email_sent = self.notification_system.send_daily_report(report, target_date)
+        if email_sent:
+            print("📧 Daily report sent via email")
+        else:
+            print("⚠️  Email not configured or failed to send")
         
         # Display summary
         summary = self.notification_system.get_daily_summary()

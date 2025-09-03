@@ -146,15 +146,49 @@ class DradisDB:
             cursor = conn.cursor()
             
             if target_date:
-                # Filter by papers published on the target date
-                cursor.execute('''
-                    SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
-                    FROM papers p
-                    JOIN paper_analysis pa ON p.id = pa.paper_id
-                    WHERE pa.flagged = TRUE AND p.published_date LIKE ?
-                    ORDER BY pa.relevance_score DESC, p.published_date DESC
-                    LIMIT ?
-                ''', (f'{target_date}%', limit))
+                # Handle different date formats in the database
+                # Convert input date to multiple possible formats for matching
+                from datetime import datetime
+                
+                # If target_date is in YYYY-MM-DD format, convert to multiple formats
+                if len(target_date) == 10 and target_date.count('-') == 2:
+                    try:
+                        parsed_date = datetime.strptime(target_date, '%Y-%m-%d')
+                        # Generate multiple format patterns to match against
+                        iso_pattern = target_date  # 2025-09-03
+                        rss_pattern = parsed_date.strftime('%d %b %Y')  # 03 Sep 2025
+                        
+                        cursor.execute('''
+                            SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                            FROM papers p
+                            JOIN paper_analysis pa ON p.id = pa.paper_id
+                            WHERE pa.flagged = TRUE AND (
+                                p.published_date LIKE ? OR 
+                                p.published_date LIKE ?
+                            )
+                            ORDER BY pa.relevance_score DESC, p.published_date DESC
+                            LIMIT ?
+                        ''', (f'{iso_pattern}%', f'%{rss_pattern}%', limit))
+                    except ValueError:
+                        # If parsing fails, fall back to simple LIKE matching
+                        cursor.execute('''
+                            SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                            FROM papers p
+                            JOIN paper_analysis pa ON p.id = pa.paper_id
+                            WHERE pa.flagged = TRUE AND p.published_date LIKE ?
+                            ORDER BY pa.relevance_score DESC, p.published_date DESC
+                            LIMIT ?
+                        ''', (f'{target_date}%', limit))
+                else:
+                    # For other date formats, use simple LIKE matching
+                    cursor.execute('''
+                        SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                        FROM papers p
+                        JOIN paper_analysis pa ON p.id = pa.paper_id
+                        WHERE pa.flagged = TRUE AND p.published_date LIKE ?
+                        ORDER BY pa.relevance_score DESC, p.published_date DESC
+                        LIMIT ?
+                    ''', (f'{target_date}%', limit))
             else:
                 # Get recent flagged papers (original behavior)
                 cursor.execute('''
@@ -195,14 +229,44 @@ class DradisDB:
         """Get all papers submitted on a specific date"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
-                FROM papers p
-                LEFT JOIN paper_analysis pa ON p.id = pa.paper_id
-                WHERE p.published_date LIKE ?
-                ORDER BY p.published_date DESC
-                LIMIT ?
-            ''', (f'{target_date}%', limit))
+            
+            # Handle different date formats in the database
+            if len(target_date) == 10 and target_date.count('-') == 2:
+                try:
+                    from datetime import datetime
+                    parsed_date = datetime.strptime(target_date, '%Y-%m-%d')
+                    # Generate multiple format patterns to match against
+                    iso_pattern = target_date  # 2025-09-03
+                    rss_pattern = parsed_date.strftime('%d %b %Y')  # 03 Sep 2025
+                    
+                    cursor.execute('''
+                        SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                        FROM papers p
+                        LEFT JOIN paper_analysis pa ON p.id = pa.paper_id
+                        WHERE p.published_date LIKE ? OR p.published_date LIKE ?
+                        ORDER BY p.published_date DESC
+                        LIMIT ?
+                    ''', (f'{iso_pattern}%', f'%{rss_pattern}%', limit))
+                except ValueError:
+                    # If parsing fails, fall back to simple LIKE matching
+                    cursor.execute('''
+                        SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                        FROM papers p
+                        LEFT JOIN paper_analysis pa ON p.id = pa.paper_id
+                        WHERE p.published_date LIKE ?
+                        ORDER BY p.published_date DESC
+                        LIMIT ?
+                    ''', (f'{target_date}%', limit))
+            else:
+                # For other date formats, use simple LIKE matching
+                cursor.execute('''
+                    SELECT p.*, pa.relevance_score, pa.summary, pa.key_concepts
+                    FROM papers p
+                    LEFT JOIN paper_analysis pa ON p.id = pa.paper_id
+                    WHERE p.published_date LIKE ?
+                    ORDER BY p.published_date DESC
+                    LIMIT ?
+                ''', (f'{target_date}%', limit))
             
             columns = [description[0] for description in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]

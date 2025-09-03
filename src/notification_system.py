@@ -24,6 +24,10 @@ class NotificationSystem:
         
     def generate_daily_report(self, target_date: str = None) -> Dict:
         """Generate daily report of flagged papers"""
+        # If no target date specified, use today's date for daily operations
+        if target_date is None:
+            target_date = datetime.now().strftime("%Y-%m-%d")
+        
         flagged_papers = self.db.get_flagged_papers(limit=20, target_date=target_date)
         
         # Also get all papers for the date to check for friend papers
@@ -208,7 +212,7 @@ class NotificationSystem:
                     MUTT_COMMAND,
                     '-e', 'set content_type=text/html',  # Set content type to HTML
                     '-e', 'set sendmail="/usr/bin/msmtp"',  # Use msmtp directly
-                    '-e', f'set from="{self.mutt_from_address}"',  # Set from address
+                    '-e', f'set from="{MUTT_FROM_ADDRESS}"',  # Set from address
                     '-e', 'set use_from=yes',
                     '-s', subject,  # Subject
                     USER_EMAIL  # Recipient

@@ -1,0 +1,16 @@
+Fix email date filtering and database date format handling
+
+- Fix generate_daily_report() to default to today's date when target_date=None
+- Add robust date format matching in database queries to handle both ISO and RSS formats
+- Update get_flagged_papers() and get_papers_by_date() to match multiple date patterns
+- Fix mutt from address variable reference in notification system
+- Ensure daily email reports only contain papers from the specified date
+
+This resolves the issue where daily email reports were returning all historical
+flagged papers instead of papers from the current date. The system now correctly
+handles the mixed date formats (YYYY-MM-DD and "DD Mon YYYY") present in the
+database and ensures proper date-specific filtering for email notifications.
+
+Generated with Claude Code (https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>

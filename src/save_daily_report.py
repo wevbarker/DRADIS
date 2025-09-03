@@ -2,7 +2,11 @@
 """
 Save daily DRADIS report to HTML file
 """
-from .notification_system import NotificationSystem
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.notification_system import NotificationSystem
 from datetime import datetime
 
 def save_daily_report() -> None:
