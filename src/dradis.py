@@ -340,8 +340,8 @@ def main() -> None:
 Examples:
   python dradis.py setup                    # Set up user profile manually
   python dradis.py auto-profile             # Build profile from your papers automatically
-  python dradis.py harvest                  # Run daily harvest (slow, thorough)
-  python dradis.py fast-harvest             # Run fast parallel harvest (2-4 hours)
+  python dradis.py harvest                  # Run daily harvest (legacy, may hang)
+  python dradis.py fast-harvest             # Run fast parallel harvest (recommended)
   python dradis.py fast-harvest --date 2025-08-15  # Harvest specific historical date
   python dradis.py show                     # Show flagged papers
   python dradis.py search "string theory"   # Search papers

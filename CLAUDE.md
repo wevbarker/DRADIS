@@ -70,7 +70,7 @@ python dradis.py auto-profile
 ### Daily Operations
 ```bash
 # Run paper harvest
-python dradis.py harvest
+python dradis.py fast-harvest
 
 # Check system status
 python dradis.py status

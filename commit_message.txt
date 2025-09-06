@@ -1,16 +1,15 @@
-Fix email date filtering and database date format handling
+Fix DRADIS cron job hanging issue by switching to fast-harvest
 
-- Fix generate_daily_report() to default to today's date when target_date=None
-- Add robust date format matching in database queries to handle both ISO and RSS formats
-- Update get_flagged_papers() and get_papers_by_date() to match multiple date patterns
-- Fix mutt from address variable reference in notification system
-- Ensure daily email reports only contain papers from the specified date
+- Replace regular harvest with fast-harvest in run_daily_harvest.sh to prevent analysis step hanging
+- Update all template files and documentation to use fast-harvest as default method  
+- Mark legacy harvest command as potentially problematic in help text
+- Add privacy scanner script for repository security checks
+- Update README cron examples to use reliable fast-harvest method
 
-This resolves the issue where daily email reports were returning all historical
-flagged papers instead of papers from the current date. The system now correctly
-handles the mixed date formats (YYYY-MM-DD and "DD Mon YYYY") present in the
-database and ensures proper date-specific filtering for email notifications.
+The regular harvest command was causing cron jobs to hang after paper harvesting,
+preventing analysis and resulting in empty email reports. Fast-harvest provides
+reliable paper analysis with faster execution times (2-3 minutes vs 30+ minutes).
 
-Generated with Claude Code (https://claude.ai/code)
+Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>

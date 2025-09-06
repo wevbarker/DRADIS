@@ -323,7 +323,7 @@ sudo journalctl -u dradis -f
 #### **Cron Jobs**
 ```bash
 # Daily harvest at 9 AM
-0 9 * * * cd /path/to/dradis && python -m src.dradis harvest
+0 9 * * * cd /path/to/dradis && python -m src.dradis fast-harvest
 
 # Weekly summary on Sundays
 0 10 * * 0 cd /path/to/dradis && python -m src.dradis report --weekly

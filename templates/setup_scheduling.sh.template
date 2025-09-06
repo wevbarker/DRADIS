@@ -63,7 +63,7 @@ TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 echo "[$TIMESTAMP] Starting DRADIS daily harvest" >> "$LOG_FILE"
 
 # Run harvest command
-if python dradis.py harvest >> "$LOG_FILE" 2>&1; then
+if python dradis.py fast-harvest >> "$LOG_FILE" 2>&1; then
     echo "[$TIMESTAMP] Harvest completed successfully" >> "$LOG_FILE"
     exit 0
 else
